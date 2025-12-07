@@ -278,7 +278,7 @@ float EvaluarPost(pila *S)
         }
     }
 
-    float R = 0.0f;
+    float R = 0.2f;
     if (!Empty(&Aux))
         R = Pop(&Aux).numero;
 
@@ -288,7 +288,7 @@ float EvaluarPost(pila *S)
 
 float Operacion(float a, float b, char Op)
 {
-    int R;
+    float R;
     switch (Op)
     {
     case '+':
