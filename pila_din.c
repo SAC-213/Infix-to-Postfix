@@ -1,12 +1,11 @@
 /*
 Programa: pila_din.c
-Versión: 1.0 — 21 de noviembre del 2025
+Versión: 1.1 — 07 de diciembre del 2025
 Autor(es): Ascencion Cruz Saul
 
 Descripción:
 Archivo a convertir en .o con la lógica de la librería de pila dinámica.
 */
-
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -166,9 +165,9 @@ elemento Element(pila *S, int n)
 	nodo *aux;
 	elemento r;
 	int d;
-	d = (Size(S)-n);
+	d = (Size(S) - n);
 	aux = S->tope;
-	if (1 <=n && n<= Size(S))
+	if (1 <= n && n <= Size(S))
 	{
 		for (int i = 0; i < d; i++)
 		{
@@ -193,13 +192,17 @@ primero
 */
 void Flip(pila *s)
 {
-	pila b;
-
-	Initialize(&b);
+	pila aux;
+	Initialize(&aux);
 
 	while (!Empty(s))
 	{
-		Push(&b, Pop(s));
+		Push(&aux, Pop(s));
 	}
-	*s = b;
+
+	// Regresar contenido
+	while (!Empty(&aux))
+	{
+		Push(s, Pop(&aux));
+	}
 }

@@ -8,7 +8,7 @@
 
 /*
 Programa: 03.c
-Versión: 1.30 — 06 de diciembre del 2025
+Versión: 1.35 — 06 de diciembre del 2025
 Autor(es): Ascencion Cruz Saul
 
 Descripción: Este programa recibe una expresión algebraica en forma infija y la convierte a postfija. Posteriormente,
@@ -67,18 +67,23 @@ int main(int argc, char const *argv[])
 
     Lectura(&Expresion, &Parentesis);
 
-    Flag = VerificarParentesis(&Parentesis);
-    Destroy(&Parentesis);
-    (Flag == 1) ? printf("Parentesis bien colocados\n") : (printf("\nError, parentesis mal colocados\n"), exit(1));
+    if (!Empty(&Parentesis))
+    {
+        Flag = VerificarParentesis(&Parentesis);
+        Destroy(&Parentesis);
+        if (Flag == 0)
+        {
+            printf("Error, parentesis mal colocados\n");
+            exit(1);
+        }
+        printf("Parentesis bien colocados\n");
+    }
 
     PostFijo(&Expresion);
-
     SustituirLiterales(&Expresion);
-
     R = EvaluarPost(&Expresion);
 
-    printf("El resultado de la expresion es: %.2f", R);
-
+    printf("El resultado de la expresion es: %.2f\n", R);
     return 0;
 }
 
@@ -87,19 +92,14 @@ void Lectura(pila *S, pila *P)
     printf("Ingrese expresion: ");
     char c;
     elemento e;
+
     while ((c = getchar()) != '\n')
     {
+        e.caracter = c;
         if (c == '(' || c == ')')
-        {
-            e.caracter = c;
             Push(P, e);
-            Push(S, e);
-        }
-        else
-        {
-            e.caracter = c;
-            Push(S, e);
-        }
+
+        Push(S, e);
     }
 }
 
@@ -107,13 +107,10 @@ int VerificarParentesis(pila *P)
 {
     pila Aux;
     Initialize(&Aux);
-    char c;
-    int Flag, i;
-    Flag = FALSE;
+    int Flag = FALSE;
 
     if (Size(P) % 2 == 0)
     {
-        i = 0;
         Flag = TRUE;
         while (!Empty(P))
         {
@@ -121,7 +118,7 @@ int VerificarParentesis(pila *P)
             {
                 Push(&Aux, Pop(P));
             }
-            if (Top(P).caracter == '(')
+            else if (Top(P).caracter == '(')
             {
                 Pop(P);
                 if (!Empty(&Aux))
@@ -135,8 +132,9 @@ int VerificarParentesis(pila *P)
                 }
             }
         }
-        Flag = (Empty(&Aux)) ? TRUE : FALSE;
+        if (!Empty(&Aux)) Flag = FALSE;
     }
+
     Destroy(&Aux);
     return Flag;
 }
@@ -145,17 +143,23 @@ void PostFijo(pila *S)
 {
     pila Aux;
     pila Copia;
-    elemento e;
     Initialize(&Aux);
     Initialize(&Copia);
+
     CopiarPila(S, &Copia);
     VaciarPila(S);
-    Flip(&Copia);
+
+    if (!Empty(&Copia))
+        Flip(&Copia);
+    else
+        return;
+
     while (!Empty(&Copia))
     {
-        if ((Top(&Copia).caracter >= 'A' && Top(&Copia).caracter <= 'Z') || (Top(&Copia).caracter >= 'a' && Top(&Copia).caracter <= 'z'))
+        if ((Top(&Copia).caracter >= 'A' && Top(&Copia).caracter <= 'Z') ||
+            (Top(&Copia).caracter >= 'a' && Top(&Copia).caracter <= 'z'))
         {
-            printf("%c", Top(&Copia).caracter);
+            putchar(Top(&Copia).caracter);
             Push(S, Pop(&Copia));
         }
         else if (Top(&Copia).caracter == '(')
@@ -166,7 +170,7 @@ void PostFijo(pila *S)
         {
             while (!Empty(&Aux) && Top(&Aux).caracter != '(')
             {
-                printf("%c", Top(&Aux).caracter);
+                putchar(Top(&Aux).caracter);
                 Push(S, Pop(&Aux));
             }
             Pop(&Aux);
@@ -174,83 +178,117 @@ void PostFijo(pila *S)
         }
         else
         {
-            while (!Empty(&Aux) && (Precedencia(Top(&Aux).caracter) >= Precedencia(Top(&Copia).caracter)) && Top(&Aux).caracter != '(')
+            while (!Empty(&Aux) &&
+                   (Precedencia(Top(&Aux).caracter) >= Precedencia(Top(&Copia).caracter)) &&
+                   Top(&Aux).caracter != '(')
             {
-                printf("%c", Top(&Aux).caracter);
+                putchar(Top(&Aux).caracter);
                 Push(S, Pop(&Aux));
             }
             Push(&Aux, Pop(&Copia));
         }
     }
+
     while (!Empty(&Aux))
     {
-        printf("%c", Top(&Aux).caracter);
+        putchar(Top(&Aux).caracter);
         Push(S, Pop(&Aux));
     }
+
+    putchar('\n');
     Destroy(&Aux);
+    Destroy(&Copia);
 }
 
 void SustituirLiterales(pila *S)
 {
-    pila Aux;
-    Initialize(&Aux);
-    float a;
-    elemento e;
-    Flip(S);
-    while (!Empty(S))
+    if (Empty(S)) return;
+
+    pila Temp;
+    pila Result;
+    Initialize(&Temp);
+    Initialize(&Result);
+
+    CopiarPila(S, &Temp);
+    Flip(&Temp);
+
+    while (!Empty(&Temp))
     {
-        if ((Top(S).caracter >= 'A' && Top(S).caracter <= 'Z') || (Top(S).caracter >= 'a' && Top(S).caracter <= 'z'))
+        elemento cur = Pop(&Temp);
+
+        if ((cur.caracter >= 'A' && cur.caracter <= 'Z') ||
+            (cur.caracter >= 'a' && cur.caracter <= 'z'))
         {
-            printf("\nIngrese un caracter para %c: ", Top(S).caracter);
-            Pop(S);
-            scanf("%f", &a);
-            e.numero = a;
-            e.tipo = TRUE;
-            Push(&Aux, e);
+            float val;
+            printf("Ingrese un valor para %c: ", cur.caracter);
+            scanf("%f", &val);
+
+            elemento num;
+            num.numero = val;
+            num.caracter = cur.caracter;
+            num.tipo = TRUE;
+            Push(&Result, num);
         }
         else
         {
-            e = Pop(S);
-            e.tipo = FALSE;
-            Push(&Aux, e);
+            elemento op;
+            op.caracter = cur.caracter;
+            op.tipo = FALSE;
+            Push(&Result, op);
         }
     }
-    Flip(&Aux);
-    CopiarPila(&Aux, S);
-    VaciarPila(&Aux);
+
+    VaciarPila(S);
+    CopiarPila(&Result, S);
+
+    Destroy(&Temp);
+    Destroy(&Result);
 }
 
 float EvaluarPost(pila *S)
 {
     elemento e, u;
-    float R;
     float a, b;
     pila Aux;
     Initialize(&Aux);
+
     while (!Empty(S))
     {
         e = Pop(S);
+
         if (e.tipo == TRUE)
         {
             Push(&Aux, e);
         }
         else
         {
+            if (Size(&Aux) < 2)
+            {
+                printf("Error: operandos insuficientes\n");
+                Destroy(&Aux);
+                return 0;
+            }
+
             b = Pop(&Aux).numero;
             a = Pop(&Aux).numero;
+
             u.numero = Operacion(a, b, e.caracter);
             u.tipo = TRUE;
             Push(&Aux, u);
         }
     }
-    R = Aux.tope->e.numero;
+
+    float R = 0.0f;
+    if (!Empty(&Aux))
+        R = Pop(&Aux).numero;
+
     Destroy(&Aux);
     return R;
 }
 
 float Operacion(float a, float b, char Op)
 {
-    float R;
+    int R;
     switch (Op)
     {
     case '+':
@@ -266,78 +304,85 @@ float Operacion(float a, float b, char Op)
         R = a / b;
         break;
     case '^':
-        R = pow((double)a, (double)b);
+        R = pow(a, b);
         break;
     default:
-        0;
-        break;
+        R = 0;
     }
     return R;
 }
 
 int Precedencia(char C)
 {
-    int R;
+    float Op;
     switch (C)
     {
-    case ')':
-        R = 4;
+    case ')': 
+        Op = 4;
         break;
-    case '^':
-        R = 3;
+    case '^': 
+        Op =  3;
         break;
     case '*':
-        R = 2;
-        break;
-    case '/':
-        R = 2;
+    case '/': 
+        Op =  2;
         break;
     case '+':
-        R = 1;
+    case '-': 
+        Op =  1;
         break;
-    case '-':
-        R = 1;
+    case '(': 
+        Op =  0;
         break;
-    case '(':
-        R = 0;
-        break;
-    default:
-        R = -1;
+    default:  
+        Op = -1;
     }
-    return R;
+    return Op;
 }
 
 void CopiarPila(pila *Origen, pila *Destino)
 {
-    for (int i = 1; i <= Size(Origen); i++)
+    pila Aux;
+    Initialize(&Aux);
+
+    VaciarPila(Destino);
+    Flip(Origen);
+
+    while (!Empty(Origen))
     {
-        Push(Destino, Element(Origen, i));
+        elemento e = Pop(Origen);
+        Push(&Aux, e);
+        Push(Destino, e);
     }
+
+    Flip(&Aux);
+    while (!Empty(&Aux))
+        Push(Origen, Pop(&Aux));
+
+    Destroy(&Aux);
 }
 
 void VaciarPila(pila *S)
 {
     while (!Empty(S))
-    {
         Pop(S);
-    }
 }
 
 void Debug(pila *S)
 {
     pila Copia;
+    Initialize(&Copia);
     CopiarPila(S, &Copia);
+
     while (!Empty(&Copia))
     {
-        if (!(Top(&Copia).tipo))
-        {
-            printf("%c", Pop(&Copia).caracter);
-        }
+        elemento e = Pop(&Copia);
+        if (e.tipo == FALSE)
+            printf("%c", e.caracter);
         else
-        {
-            printf("(%.2f)", Pop(&Copia).numero);
-        }
+            printf("(%.2f)", e.numero);
     }
 
+    printf("\n");
     Destroy(&Copia);
 }
